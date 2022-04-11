@@ -16,32 +16,32 @@ warnings.filterwarnings('ignore')
 
 
 # %%
-def Cal_rolling_mean_var(colname, filename):
+def Cal_rolling_mean_var(column):
     """
     To calculate and plot rolling mean and rolling variance of a column
-
         Parameter:
-            filename (string): name of the file with .extention
-            colname (string): name of the column to work on
+            coulmn (list): list of coulmn values
         Variables:
             rolling_mean (list): a list containing the rolling means
             rolling_var (list): a list containing the rolling variances
         returns:
             None
-
     """
-    df = pd.read_csv(filename)
 
     rolling_mean = list()
     rolling_var = list()
 
-    for i in range(len(df)):
-        data = pd.read_csv(filename).head(i)
+    for i in range(1,len(column)+1):
+        mean=np.mean(column[:i])
+        rolling_mean.append(mean)
 
-        rolling_mean.append(np.mean(data[colname]))
-        rolling_var.append(np.var(data[colname]))
+        var=np.var(column[:i])
+        rolling_var.append(var)
 
-    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(6, 4))
+    print(f'Final rolling mean: {rolling_mean[-1]:.4f}')
+    print(f'Final rolling variance: {rolling_var[-1]:.4f}')
+
+    fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(8, 4))
 
     axes[0].plot(rolling_mean, color='r')
     axes[0].set_title('\nMean')
@@ -52,8 +52,9 @@ def Cal_rolling_mean_var(colname, filename):
     axes[1].set(xlabel='Time', ylabel='Variance USD($)')
 
     plt.tight_layout()
-    plt.suptitle(f'{colname} vs Time')
+    plt.suptitle(f'Dependant Variable vs Time')
     plt.show()
+
 
 def ADF_Cal(x):
     result = adfuller(x)
@@ -136,15 +137,21 @@ def acf_plot(acf, tau, y, title='Autocorrelation of White Noise'):
     Returns:
         NONE
     """
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(12,6))
     markerline, stemline, baseline = plt.stem(acf, markerfmt='C3o', basefmt='C0-')
     plt.setp(markerline, markersize = 6)
     plt.ylabel('Magnitute')
     plt.xlabel('Lags')
-    if max(tau) >10:
+    if max(tau) <= 10:
+        plt.xticks(ticks=range(0,len(acf))[::1], labels = tau[::1])
+    if max(tau) > 10 and max(tau) < 100:
         plt.xticks(ticks=range(0,len(acf))[::5], labels = tau[::5])
+    elif max(tau) >= 100 and max(tau) < 200:
+        plt.xticks(ticks=range(0,len(acf))[::20], labels = tau[::20])
+    elif max(tau) >= 200 and max(tau) < 600:
+        plt.xticks(ticks=range(0,len(acf))[::50], labels = tau[::50])
     else:
-        plt.xticks(ticks=range(0,len(acf))[::], labels = tau[::])
+        plt.xticks(ticks=range(0,len(acf))[::100], labels = tau[::100])
     plt.title(f'{title}')
     # ax.fill_between(range(0,len(acf)),confint[0],confint[1], alpha=0.25)
     m = 1.96/np.sqrt(len(y))
@@ -463,7 +470,7 @@ def ACF_PACF_Plot(y, lags):
     acf = sm.tsa.stattools.acf(y, nlags = lags)
     pacf = sm.tsa.stattools.pacf(y, nlags=lags)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(14,8))
     plt.subplot(211)
     plt.title('ACF/PACF of the raw data')
     plot_acf(y, ax = plt.gca(), lags =lags)
@@ -581,3 +588,5 @@ def plot_SSE(SSE):
     plt.ylabel('SSE')
     plt.title('Sum square error vs. No. of iterations')
     plt.show()
+
+#%%
