@@ -357,6 +357,45 @@ def ses_predict(t, yt, alpha, initial):
     return predict
 # for h step -> yhat = predict using last trainset row
 
+def moving_avg(y):
+    m = int(input("Enter the value of m:"))
+    result = pd.DataFrame()
+    
+    def calculate_mavg(m,y):
+        m_avg_list = pd.DataFrame(columns=['t', f'{m}MA'])
+        k = int(np.floor((m - 1) / 2))
+        
+        for t in range(k, (len(y) - k)):
+            s = 0
+            for j in range(-k, k + 1):
+                s = s + y[t + j]
+            m_avg = round(s / m, 2)
+            m_avg_list.loc[len(m_avg_list)] = [t, m_avg]
+        return m_avg_list
+
+    def even_mavg(y,m):
+        
+        cumsum = np.cumsum(np.insert(y, 0, 0)) 
+        return (cumsum[m:] - cumsum[:-m]) / float(m)
+        
+    if m < 0:
+        print("Invalid value of m")
+    elif m == 1 | m == 2:
+        print('Not acceptable m value. Please enter more than 2.')
+
+    elif m%2 != 0:    
+        result = calculate_mavg(m,y)
+        # print(result)
+    if m % 2 == 0:
+        mv1 = even_mavg(y,m)
+        m2 = int(input("Enter the value of second order m:"))
+        mv2 = even_mavg(mv1,m2)
+        tstart=((m-1)/2+(m2-1)/2)+1
+        result['t'] = np.arange(tstart,len(mv2)+tstart)
+        result[f'{m}MA'] = mv2
+        
+    return result
+
 def b_hat_calc(x,y):
     return np.matmul(np.matmul(np.linalg.inv(np.matmul(x.T,x)),x.T),y)
 
