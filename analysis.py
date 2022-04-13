@@ -1,5 +1,4 @@
 #%%
-from sympy import rotations
 from toolbox import *
 import pandas as pd
 import numpy as np
@@ -192,6 +191,7 @@ axes[1].legend(loc = 'upper right')
 plt.tight_layout()
 plt.show()
 #%%
+# Moving Average (3)
 dfma = df.copy()
 
 dfma['avgAQI_MA'] = dfma['avgAQI'].rolling(3).mean()
@@ -553,24 +553,33 @@ plt.legend(loc='upper right')
 plt.show()
 # together
 plt.figure(figsize=(16,6))
-Y_train.plot(label='Train set')
-plt.plot(pred.index,pred, label='Predicted')
-plt.plot(Y_test, label='Test')
-plt.plot(forecast.index,forecast, label='Forecast')
-plt.xticks(xticks=df.index[::400]) # need to work on the ticks
-plt.title('AvgAQI Predictions using OLS model')
+Y_train.plot(label='Train set', color = 'b')
+plt.plot(pred.index,pred, label='Predicted', color = 'skyblue')
+plt.plot(Y_test, label='Test', color = 'red')
+plt.plot(forecast.index,forecast, label='Forecast', color = 'seagreen')
+plt.xticks(ticks=range(0,len(df))[::981], labels = df.index[::981])
+plt.title('Average AQI Predictions using OLS model')
 plt.ylabel('AQI')
 plt.xlabel('Time')
 plt.grid()
 plt.legend(loc='upper right')
 plt.show()
-
+#%%
 # ACF of ERRORS
+acf(res_err, 50, plot = True, title='ACF of Residual Error')
+acf(fcst_err, 50, plot = True, title='ACF of Forecast Error')
+
 # Model Performance
 # MSE
+print(f'\nMSE of Residual Error: {mean_squared_error(Y_train, pred):.3f}')
+print(f'\nMSE of Foercast Error: {mean_squared_error(Y_test, forecast):.3f}')
 # Q
+
+q_res_ols = q_value(res_err, 50, len(Y_train))
+print(f'\nQ-Value of Residual Error: {q_res_ols:.3f}')
+
 # T test
-print(f"T Test p-values: \n{final_model.pvalues}")
+print(f"\nT Test p-values: \n{final_model.pvalues}")
 print("As the p-values of the T test is less than the significant level\
  alpha = 0.05, we reject the null hypothesis and conclude that there is a\
  statistically significant relationship between the predictor variable and the response variable.")
@@ -584,9 +593,102 @@ print("As the p-value of the F test is less than the significant level\
 # %%
 ######## 11. Base model
 # average
-# naive
-# drift
-# SES
+# 1 - step
+df_avg = pd.DataFrame(data = {'yt':Y_train})
+df_avg['y_hat'] = avg_pred(df_avg.index,df_avg['yt'])
+df_avg['e'] = df_avg['yt']-df_avg['y_hat']
+df_avg['e^2'] = round(df_avg['e']**2, 2)
+
+# h - step
+df_avg_h = pd.DataFrame(data = {'yt+h':Y_test})
+df_avg_h['y_hat'] = np.mean(df_avg['yt'])
+df_avg_h['e'] = df_avg_h['yt+h']-df_avg_h['y_hat']
+df_avg_h['e^2'] = round(df_avg_h['e']**2, 2)
+
+plt.figure(figsize=(16,6))
+plt.plot(df_avg.index,df_avg['yt'], label='Training Dataset', color='b')
+plt.plot(df_avg_h.index,df_avg_h['yt+h'], label = 'Testing Dataset', color='g')
+plt.plot(df_avg_h.index,df_avg_h['y_hat'], label = 'Avg Method H-step prediction', color='r', linestyle='dashed')
+plt.xticks(df.index[::981])
+plt.title('Average Method & Forecast')
+plt.xlabel('time')
+plt.ylabel('Values')
+plt.legend()
+plt.show()
+
+# MSE of prediction
+MSE_pred = round(np.mean(df_avg['e^2']),2)
+print("MSE of prediction: ", MSE_pred)
+
+# MSE of forecast
+MSE_forecast = round(np.mean(df_avg_h['e^2']),2)
+print("MSE of forecast: ", MSE_forecast)
+
+# Variance error of prediction
+var_err_pred = round(np.var(df_avg['e']),2)
+print("Variance of prediction error: ", var_err_pred)
+
+# Variance error of Forecast
+var_err_forecast = round(np.var(df_avg_h['e']),2)
+print("Variance of Forecast error: ", var_err_forecast)
+
+# ACF
+acf(df_avg['e'], 50, plot= True, title="ACF of Average Method Residuals")
+
+# Prediction Q
+print(f"Q-Value: {q_value(df_avg['e'],50,len(df_avg)):.3f}")
+
+#%%
+# Naive
+
+df_niv = pd.DataFrame(data = {'yt':Y_train})
+df_niv['y_hat'] = naive_forecast(np.arange(0,len(df_niv.index)),df_niv['yt'])
+df_niv['e'] = df_niv['yt']-df_niv['y_hat']
+df_niv['e^2'] = round(df_niv['e']**2, 2)
+
+# h - step
+df_niv_h = pd.DataFrame(data = {'yt+h':Y_test})
+df_niv_h['y_hat'] = df_niv['yt'].iloc[-1]
+df_niv_h['e'] = df_niv_h['yt+h']-df_niv_h['y_hat']
+df_niv_h['e^2'] = round(df_niv_h['e']**2, 2)
+
+plt.figure(figsize=(16,6))
+plt.plot(df_niv.index,df_niv['yt'], label='Training Dataset', color='b')
+plt.plot(df_niv_h.index,df_niv_h['yt+h'], label = 'Testing Dataset', color='g')
+plt.plot(df_niv_h.index,df_niv_h['y_hat'], label = 'Naive Method H-step prediction', color='r', linestyle='dashed')
+plt.xticks(df.index[::981])
+plt.title('Naive Method & Forecast')
+plt.xlabel('time')
+plt.ylabel('Values')
+plt.legend()
+plt.show()
+
+# MSE of prediction
+MSE_pred_nv = round(np.mean(df_niv['e^2']),2)
+print("MSE of prediction: ", MSE_pred_nv)
+
+# MSE of forecast
+MSE_forecast_nv = round(np.mean(df_niv_h['e^2']),2)
+print("MSE of forecast: ", MSE_forecast_nv)
+
+# Variance error of prediction
+var_err_pred_nv = round(np.var(df_niv['e']),2)
+print("Variance of prediction error: ", var_err_pred_nv)
+
+# Variance error of Forecast
+var_err_forecast_nv = round(np.var(df_niv_h['e']),2)
+print("Variance of Forecast error: ", var_err_forecast_nv)
+
+# ACF
+acf(df_niv['e'], 50, plot= True, title="ACF of Naive Method Residuals")
+
+# Prediction Q
+print(f"Q-Value: {q_value(df_niv['e'],50,len(df_niv)):.3f}")
+
+# Drift
+
+
+# Simple Exponential Smoothing (SES)
 # 
 
 # %%

@@ -248,8 +248,8 @@ def rolling_variance(y:list):
 
 def q_value(y: list,lags: int, t:int):
     r=acf(y,lags, plot= False)
-    rk=r**2
-    return t*(np.sum(rk[lags+2:]))
+    rk=np.square(r[lags+2:])
+    return t*(np.sum(rk))
 
 # Average Prediction
 def avg_pred(t: list, yt: list):
