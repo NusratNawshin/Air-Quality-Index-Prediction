@@ -258,12 +258,14 @@ print(f"Q-Value of Residual Error: {res_q:.3f}")
 # %%
 ######## 10. Feature Selection
 svd_df = df.select_dtypes(include='number')
+svd_df.drop(['O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1, inplace=True)
 sdv_df = svd_df.drop('avgAQI', axis=1)
+X = sm.add_constant(sdv_df)
 Y = df['avgAQI']
 
-X_train, X_test, Y_train, Y_test = train_test_split(svd_df,Y, shuffle=False, test_size=0.2)
+X_train, X_test, Y_train, Y_test = train_test_split(X,Y, shuffle=False, test_size=0.2)
 
-Xx = sm.add_constant(X_train.values)
+Xx = X.values
 H = np.matmul(Xx.T, Xx)
 _,d,_ = np.linalg.svd(H)
 print(f'singular value for X are :- \n{pd.DataFrame(d)}')
@@ -278,10 +280,306 @@ print(f'\nThe condition number for x is {LA.cond(Xx):.2f}') # its k -> if small 
 # • The 100 < κ < 1000 =⇒ Moderate to Strong DOC
 # • The κ > 1000 =⇒ Severe DOC
 
-print("\nAs the condition number is very high there is a severe Degree of Colinearity.")
+print("\nAs the condition number is very high there is a severe Degree of Co-linearity.")
 
 #%%
 # OLS
+# Full model
+model=sm.OLS(Y_train,X_train).fit()
+print(model.summary())
+#%%
+# maximum p of model 1 
+max_p=pd.DataFrame(model.pvalues,columns=['P_Values']).set_index(model.pvalues.index)
+max_p = max_p[max_p['P_Values'] == max_p['P_Values'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest P-value is on column 'Month'.Let's drop this feature\
+ from the train set and rebuilt the model.")
+
+#%%
+# model 2
+X_train.drop(['Month'], axis=1, inplace=True)
+model2 = sm.OLS(y_train,X_train).fit()
+print('Model 2: After dropping Month: \n',model2.summary())
+
+#%%
+# max p
+max_p=pd.DataFrame(model2.pvalues,columns=['P_Values']).set_index(model2.pvalues.index)
+max_p = max_p[max_p['P_Values'] == max_p['P_Values'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest P-value is on column 'SO2 1st Max Hour'.Let's drop this feature\
+ from the train set and build the 3rd model.")
+
+#%%
+# model 3
+X_train.drop(['SO2 1st Max Hour'], axis=1, inplace=True)
+model3 = sm.OLS(y_train,X_train).fit()
+print('Model 3: After dropping SO2 1st Max Hour: \n',model3.summary())
+
+#%%
+# max p_values
+max_p=pd.DataFrame(model3.pvalues,columns=['p_values']).set_index(model3.pvalues.index)
+max_p = max_p[max_p['p_values'] == max_p['p_values'].max()]
+print(f"\nMaximum p_values: \n{max_p}")
+
+print("The highest p_values is on column 'Day'.Let's drop this feature\
+ from the train set and build the 4th model.")
+
+#%%
+# Model 4
+X_train.drop(['Day'], axis=1, inplace=True)
+model4 = sm.OLS(y_train,X_train).fit()
+print('Model 4: After dropping Day: \n',model4.summary())
+
+#%%
+# max p
+max_p=pd.DataFrame(model4.pvalues,columns=['P_Value']).set_index(model4.pvalues.index)
+max_p = max_p[max_p['P_Value'] == max_p['P_Value'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest P-value is on column 'O3 1st Max Hour'.Let's drop this feature\
+ from the train set and build the 5th model.")
+
+#%%
+# Model 5
+X_train.drop(['O3 1st Max Hour'], axis=1, inplace=True)
+model5 = sm.OLS(y_train,X_train).fit()
+print('Model 5: After dropping O3 1st Max Hour: \n',model5.summary())
+
+#%%
+# max p
+max_p=pd.DataFrame(model5.pvalues,columns=['P_Value']).set_index(model5.pvalues.index)
+max_p = max_p[max_p['P_Value'] == max_p['P_Value'].max()]
+print(f"\nMaximum P_Value: \n{max_p}")
+
+print("The highest P_Value is on column 'NO2 1st Max Hour'.Let's drop this feature\
+ from the train set and build the 6th model.")
+
+#%%
+# Model 6
+X_train.drop(['NO2 1st Max Hour'], axis=1, inplace=True)
+model6 = sm.OLS(y_train,X_train).fit()
+print('Model 6: After dropping NO2 1st Max Hour: \n',model6.summary())
+
+#%%
+# max p_values
+max_p=pd.DataFrame(model6.pvalues,columns=['p_values']).set_index(model6.pvalues.index)
+max_p = max_p[max_p['p_values'] == max_p['p_values'].max()]
+print(f"\nMaximum p_values: \n{max_p}")
+
+print("The highest p_values is on column 'CO 1st Max Hour'.Let's drop this feature\
+ from the train set and build the 7th model.")
+
+#%%
+# Model 7
+
+X_train.drop(['CO 1st Max Hour'], axis=1, inplace=True)
+model7 = sm.OLS(y_train,X_train).fit()
+print('Model 7: After dropping CO 1st Max Hour: \n',model7.summary())
+
+#%%
+# max P_Value
+max_p=pd.DataFrame(model7.pvalues[1:],columns=['P_Value']).set_index(model7.pvalues.index[1:])
+max_p = max_p[max_p['P_Value'] == max_p['P_Value'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest sP_Value is on column 'Year'.Let's drop this feature\
+ from the train set and buil the 8th model.")
+
+#%%
+# Model 8
+X_train.drop(['Year'], axis=1, inplace=True)
+model8 = sm.OLS(y_train,X_train).fit()
+print('Model 8: After dropping Year: \n',model8.summary())
+
+#%%
+# max p_value
+max_p=pd.DataFrame(model8.pvalues,columns=['p_value']).set_index(model8.pvalues.index)
+max_p = max_p[max_p['p_value'] == max_p['p_value'].max()]
+print(f"\nMaximum p_value: \n{max_p}")
+
+print("The highest p_value is on column 'CO Mean'.Let's drop this feature\
+ from the train set and build the 9th model.") 
+
+#%%
+# Model 9
+X_train.drop(['CO Mean'], axis=1, inplace=True)
+model9 = sm.OLS(y_train,X_train).fit()
+print('Model 9: After dropping CO Mean: \n',model9.summary())
+
+#%%
+# max p
+max_p=pd.DataFrame(model9.pvalues,columns=['P_Value']).set_index(model9.pvalues.index)
+max_p = max_p[max_p['P_Value'] == max_p['P_Value'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest P-value is on column 'SO2 Mean'.Let's drop this feature\
+ from the train set and build the 10th model.") 
+
+#%%
+# Model 10
+X_train.drop(['SO2 Mean'], axis=1, inplace=True)
+model10 = sm.OLS(y_train,X_train).fit()
+print('Model 10: After dropping SO2 Mean: \n',model10.summary())
+
+#%%
+# max p
+max_p=pd.DataFrame(model10.pvalues,columns=['P_Value']).set_index(model10.pvalues.index)
+max_p = max_p[max_p['P_Value'] == max_p['P_Value'].max()]
+print(f"\nMaximum p-value: \n{max_p}")
+
+print("The highest P-value is on column 'O3 Mean'.Let's drop this feature\
+ from the train set and build the 11th model.") 
+
+#%%
+# Model 11
+X_train.drop(['O3 Mean'], axis=1, inplace=True)
+model11 = sm.OLS(y_train,X_train).fit()
+print('Model 11: After dropping O3 Mean: \n',model11.summary())
+
+#%%
+# max p_value
+max_p=pd.DataFrame(model11.pvalues,columns=['p_value']).set_index(model11.pvalues.index)
+max_p = max_p[max_p['p_value'] == max_p['p_value'].max()]
+print(f"\nMaximum p_value: \n{max_p}")
+
+print("The highest p_value is on column 'NO2 Mean'.Let's drop this feature\
+ from the train set and build the 12th model.")  
+
+#%%
+# Model 12
+X_train.drop(['NO2 Mean'], axis=1, inplace=True)
+model12 = sm.OLS(y_train,X_train).fit()
+print('Model 12: After dropping NO2 Mean: \n',model12.summary())
+
+#%%
+# max p_value
+max_p=pd.DataFrame(model12.pvalues,columns=['p_value']).set_index(model12.pvalues.index)
+max_p = max_p[max_p['p_value'] == max_p['p_value'].max()]
+print(f"\nMaximum p_value: \n{max_p}")
+
+print("The highest p_value is on column 'SO2 1st Max Value'.Let's drop this feature\
+ from the train set and build the 13th model.")  
+
+#%%
+# Model 13
+X_train.drop(['SO2 1st Max Value'], axis=1, inplace=True)
+model13 = sm.OLS(y_train,X_train).fit()
+print('Model 13: After dropping SO2 1st Max Value: \n',model13.summary())
+
+#%%
+# max p_value
+max_p=pd.DataFrame(model13.pvalues,columns=['p_value']).set_index(model13.pvalues.index)
+max_p = max_p[max_p['p_value'] == max_p['p_value'].max()]
+print(f"\nMaximum p_value: \n{max_p}")
+
+# print("The highest p_value is on column 'SO2 1st Max Value'.Let's drop this feature\
+#  from the train set and build the 14th model.")  
+
+print('All the pvalues are 0 but the condition number is high. Lets drop the highest std err O3 1st Max Value')
+
+#%%
+# Model 14
+X_train2 = X_train.copy()
+X_train2.drop(['O3 1st Max Value'], axis=1, inplace=True)
+model14 = sm.OLS(y_train,X_train2).fit()
+print('Model 14: After dropping O3 1st Max Value: \n',model14.summary())
+
+#%%
+
+print('After dropping O3 1st Max Value, the adjusted r squared drops a lot. So instead of dropping O3 1st Max Value, lets drop CO 1st Max Value')
+
+#%%
+# Model 15
+X_train3 = X_train.copy()
+X_train3.drop(['CO 1st Max Value'], axis=1, inplace=True)
+model15 = sm.OLS(y_train,X_train3).fit()
+print('Model 15: After dropping CO 1st Max Value: \n',model15.summary())
+
+#%%
+
+print('Now by dropping CO 1st Max Value, the condition number is still high. So instead of dropping CO 1st Max Value, lets drop NO2 1st Max Value')
+
+#%%
+# Model 16
+X_train4 = X_train.copy()
+X_train4.drop(['NO2 1st Max Value'], axis=1, inplace=True)
+model16 = sm.OLS(y_train,X_train4).fit()
+print('Model 16: After dropping NO2 1st Max Value: \n',model16.summary())
+
+#%% 
+# Final model - model16
+print(f"Now the high condition number is reduced and the final mmodel contains only 2 features,\
+ O3 1st Max Value and CO 1st Max Value. The adjusted r squared is  {((model16.rsquared_adj)*100):2f}%")
+
+X_train.drop(['NO2 1st Max Value'], axis=1, inplace=True)
+X_test = X_test[['const','O3 1st Max Value','CO 1st Max Value']]
+#%%
+final_model = sm.OLS(y_train,X_train).fit()
+#%%
+# Predictions
+# pred=final_model.predict(X_train)
+pred = final_model.fittedvalues
+
+#Residual error
+res_err=y_train-pred
+
+#Forecasts
+forecast=final_model.predict(X_test)
+
+#Forecast error
+fcst_err=y_test-forecast
+#%%
+# Prediction Plot
+plt.figure(figsize=(16,6))
+Y_train.plot(label='Train set')
+plt.plot(pred.index,pred, label='Predicted')
+plt.title('AvgAQI Prediction using OLS model')
+plt.ylabel('AQI')
+plt.xlabel('Time')
+plt.grid()
+plt.legend(loc='upper right')
+plt.show()
+# Forecast Plot
+plt.figure(figsize=(16,6))
+Y_test.plot(label='Test set')
+plt.plot(forecast.index,forecast, label='Forecast')
+plt.title('AvgAQI Forecast using OLS model')
+plt.ylabel('AQI')
+plt.xlabel('Time')
+plt.grid()
+plt.legend(loc='upper right')
+plt.show()
+# together
+plt.figure(figsize=(16,6))
+Y_train.plot(label='Train set')
+plt.plot(pred.index,pred, label='Predicted')
+plt.plot(Y_test, label='Test')
+plt.plot(forecast.index,forecast, label='Forecast')
+plt.xticks(xticks=df.index[::400]) # need to work on the ticks
+plt.title('AvgAQI Predictions using OLS model')
+plt.ylabel('AQI')
+plt.xlabel('Time')
+plt.grid()
+plt.legend(loc='upper right')
+plt.show()
+
+# ACF of ERRORS
+# Model Performance
+# MSE
+# Q
+# T test
+print(f"T Test p-values: \n{final_model.pvalues}")
+print("As the p-values of the T test is less than the significant level\
+ alpha = 0.05, we reject the null hypothesis and conclude that there is a\
+ statistically significant relationship between the predictor variable and the response variable.")
+
+# F test
+print(f"\nF Test p-value: {final_model.f_pvalue}")
+print("As the p-value of the F test is less than the significant level\
+ alpha = 0.05, we can reject the null-hypothesis and conclude that final\
+ model provides a better fit than the intercept-only model.")
 
 # %%
 ######## 11. Base model
