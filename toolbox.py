@@ -151,7 +151,7 @@ def acf_plot(acf, tau, y, title='Autocorrelation of White Noise'):
     elif max(tau) >= 200 and max(tau) < 600:
         plt.xticks(ticks=range(0,len(acf))[::50], labels = tau[::50])
     else:
-        plt.xticks(ticks=range(0,len(acf))[::100], labels = tau[::100])
+        plt.xticks(ticks=range(0,len(acf))[::200], labels = tau[::200])
     plt.title(f'{title}')
     # ax.fill_between(range(0,len(acf)),confint[0],confint[1], alpha=0.25)
     m = 1.96/np.sqrt(len(y))
