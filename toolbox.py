@@ -38,9 +38,7 @@ def Cal_rolling_mean_var(column):
         var=np.var(column[:i])
         rolling_var.append(var)
 
-    print(f'Final rolling mean: {rolling_mean[-1]:.4f}')
-    print(f'Final rolling variance: {rolling_var[-1]:.4f}')
-
+    
     fig, axes = plt.subplots(nrows=2, ncols=1, figsize=(8, 4))
 
     axes[0].plot(rolling_mean, color='r')
@@ -54,6 +52,9 @@ def Cal_rolling_mean_var(column):
     plt.tight_layout()
     plt.suptitle(f'Dependant Variable vs Time')
     plt.show()
+    print(f'Final rolling mean: {rolling_mean[-1]:.4f}')
+    print(f'Final rolling variance: {rolling_var[-1]:.4f}')
+
 
 
 def ADF_Cal(x):

@@ -78,7 +78,8 @@ x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2,shuffle=False)
 # %%
 ######### 7. Stationarity Check
 
-# rolling mean variance
+# original dataset-rolling mean variance
+print('Original dataset-rolling mean & variance')
 Cal_rolling_mean_var(df['avgAQI'])
 
 print('The rolling mean is downward slopping but rolling variance is stabilizes once all samples are included.')
@@ -118,7 +119,7 @@ print('After 1st order differenciation, the mean of dependant variable is zero\
  and both ADF and KPSS tests indicates stationarity.')
 ACF_PACF_Plot(df2['avgAQI'].dropna(), 100)
 # %%
-# log transform then 2nd order differentiation
+# log transform then 1nd order differentiation
 df3 = df.copy()
 df3['avgAQI'] = df3['avgAQI'].transform(np.log).diff(1).dropna()
 
@@ -219,11 +220,11 @@ plt.show()
 
 # %%
 ######## 9. Holt-Winters method:
-df2_nonnull = df2.copy()
-df2_nonnull.dropna(how='any', inplace =True)
-X = df2_nonnull.copy()
-X = X.drop(['avgAQI', 'O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
-y = df2_nonnull['avgAQI']
+# df2_nonnull = df2.copy()
+# df2_nonnull.dropna(how='any', inplace =True)
+# X = df2_nonnull.copy()
+# X = X.drop(['avgAQI', 'O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
+# y = df2_nonnull['avgAQI']
 
 x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2,shuffle=False)
 
