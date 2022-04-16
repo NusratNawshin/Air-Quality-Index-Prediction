@@ -59,8 +59,12 @@ ACF_PACF_Plot(df.avgAQI, 100)
 ######### d. Correlation Matrix with seaborn heatmap with the Pearson’s correlation coefficient
 # df2 = df.copy()
 # df2.drop(columns=['Year','Month','Day','Address','State','City','County'], inplace=True)
+dff = df.drop(['O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
 
-sns.heatmap(df.corr(), vmin=-1,vmax=1, cmap='vlag')
+plt.figure(figsize=(14,14))
+
+sns.heatmap(dff.corr(), vmin=-1,vmax=1, cmap='vlag', annot=True)
+
 plt.title('Correlation Matrix of AQI Dataset')
 plt.show()
 # %%
@@ -107,26 +111,26 @@ print('The ADF p-value below a threshold (1% or 5%) suggests that we reject the 
 acf(df.avgAQI,100,plot=True, title='ACF of avgAQI')
 # %%
 # 1st order differentiation
-df2 = df.copy()
+# df2 = df.copy()
 
-df2['avgAQI'] = df2['avgAQI'].diff(1)
+# df2['avgAQI'] = df2['avgAQI'].diff(1)
 
-Cal_rolling_mean_var(df2['avgAQI'])
-ADF_Cal(df2['avgAQI'].dropna())
-kpss_test(df2['avgAQI'].dropna())
+# Cal_rolling_mean_var(df2['avgAQI'])
+# ADF_Cal(df2['avgAQI'].dropna())
+# kpss_test(df2['avgAQI'].dropna())
 
-print('After 1st order differenciation, the mean of dependant variable is zero\
- and both ADF and KPSS tests indicates stationarity.')
-ACF_PACF_Plot(df2['avgAQI'].dropna(), 100)
+# print('After 1st order differenciation, the mean of dependant variable is zero\
+#  and both ADF and KPSS tests indicates stationarity.')
+# ACF_PACF_Plot(df2['avgAQI'].dropna(), 100)
 # %%
 # log transform then 1nd order differentiation
-df3 = df.copy()
-df3['avgAQI'] = df3['avgAQI'].transform(np.log).diff(1).dropna()
+# df3 = df.copy()
+# df3['avgAQI'] = df3['avgAQI'].transform(np.log).diff(1).dropna()
 
-Cal_rolling_mean_var(df3['avgAQI'])
-ADF_Cal(df3['avgAQI'].dropna())
-kpss_test(df3['avgAQI'].dropna())
-ACF_PACF_Plot(df3['avgAQI'].dropna(), 50)
+# Cal_rolling_mean_var(df3['avgAQI'])
+# ADF_Cal(df3['avgAQI'].dropna())
+# kpss_test(df3['avgAQI'].dropna())
+# ACF_PACF_Plot(df3['avgAQI'].dropna(), 50)
 
 # %%
 ######### 8- Time series Decomposition:
@@ -890,6 +894,10 @@ print(f'\tResidual: {mean_squared_error(Y_train, pred,squared=False):.3f}')
 print(f'\tFoercast: {mean_squared_error(Y_test, forecast,squared=False):.3f}')
 print(f"R-Squared Value: {(final_model.rsquared*100):.2f}%")
 print(f"Adj-R Squared Value: {(final_model.rsquared_adj*100):.2f}%")
+
+print(f"\nOverall the final model's performance is pretty good. In this final model, {(final_model.rsquared_adj*100):.2f}%\
+  variation in dependandant variable 'avgAQI' can be explained by the independant variables.\
+ The RMSE values are low as well.")
 #%%
 # ACF of ERRORS
 acf(res_err, 50, plot = True, title='ACF of Residual Error')
@@ -911,6 +919,205 @@ print(f'Variance of residuals: {np.var(res_err):.2f}')
 # %%
 ######## 13. ARMA, ARIMA, SARIMA
 # ARMA
+# finding order
+
+# re = acf(Y_train, 50, plot=False)
+# Cal_GPAC2(re[50:],7,7)
+ACF_PACF_Plot(Y_train, 50)
+re = sm.tsa.stattools.acf(Y_train.values, nlags = 50)
+Cal_GPAC(re[1:],8,8)
+
+print('Observing the patterns ARMA(1,0) and ARMA(3,1) can be selected for further analysis.')
+
+#%%
+# ARMA(1,0)
+na = 1
+nb = 0
+arma10 = sm.tsa.ARMA(Y_train, (na,nb)).fit(trend='nc', disp=0)
+
+# coefficients
+for i in range(na):
+  print(f"The AR coefficient a{i} is: {arma10.params[i]:.2f}")
+for i in range(nb):
+  print(f"The MA coefficient b{i} is {arma10.params[i+na]:.2f}")
+
+print(arma10.summary())
+
+# confidance interval
+print('Confidance Interval: ')
+print(arma10.conf_int())
+
+print('As the interval does not contain zero in it, it is statistically important.')
+
+# Prediction
+arma10_pred = arma10.fittedvalues
+arma10_residuals = Y_train - arma10_pred
+
+# Forecast
+arma10_for = arma10.predict(start=len(Y_train), end = len(df)-1)
+arma10_ferr = pd.DataFrame(Y_test.values - arma10_for).set_index(Y_test.index)
+arma10_ferr=pd.Series(np.array(arma10_ferr[0]),index = pd.date_range(Y_test.index[0],periods= len(Y_test)))
+# ACF of Residuals
+acf(arma10_residuals, 50, plot=True, title= "ACF of ARMA(1,0) Residuals")
+acf(arma10_ferr, 50, plot=True, title= "ACF of ARMA(1,0) Forecast Errors")
+
+# MSE
+arma10_p_mse = mean_squared_error(Y_train, arma10_pred)
+print(f"MSE of Residuals: {arma10_p_mse:.2f}")
+arma10_f_mse = mean_squared_error(Y_test, arma10_ferr)
+print(f"MSE of Forecast Error: {arma10_f_mse:.2f}")
+# Q-Value
+arma10_q = q_value(arma10_residuals, 50, len(Y_train))
+print(f"Q-Value: {arma10_q:.2f}")
+# Covariance Matrix
+print('Covariance Matrix: \n', arma10.cov_params())
+
+#%%
+# ARMA(3,1)
+na = 3
+nb = 1
+arma31 = sm.tsa.ARMA(Y_train, (na,nb)).fit(trend='nc', disp=0)
+
+# coefficients
+for i in range(na):
+  print(f"The AR coefficient a{i} is: {arma31.params[i]:.2f}")
+for i in range(nb):
+  print(f"The MA coefficient b{i} is {arma31.params[i+na]:.2f}")
+
+print(arma31.summary())
+
+# confidance interval
+print('Confidance Interval: ')
+print(arma31.conf_int())
+
+print('As the interval does not contain zero in it, it is statistically important.')
+
+# Prediction
+arma31_pred = arma31.fittedvalues
+arma31_residuals = Y_train - arma31_pred
+
+# Forecast
+arma31_for = arma31.predict(start=len(Y_train), end = len(df)-1)
+arma31_ferr = pd.DataFrame(Y_test.values - arma31_for).set_index(Y_test.index)
+arma31_ferr=pd.Series(np.array(arma31_ferr[0]),index = pd.date_range(Y_test.index[0],periods= len(Y_test)))
+# ACF of Residuals
+acf(arma31_residuals, 50, plot=True, title= "ACF of ARMA(3,1) Residuals")
+acf(arma31_ferr, 50, plot=True, title= "ACF of ARMA(3,1) Forecast Errors")
+
+# MSE
+arma31_p_mse = mean_squared_error(Y_train, arma31_pred)
+print(f"MSE of Residuals: {arma31_p_mse:.2f}")
+arma31_f_mse = mean_squared_error(Y_test, arma31_for)
+print(f"MSE of Forecast Error: {arma31_f_mse:.2f}")
+# Q-Value
+arma31_q = q_value(arma31_residuals, 50, len(Y_train))
+print(f"Q-Value: {arma31_q:.2f}")
+# Covariance Matrix
+print('Covariance Matrix: \n', arma31.cov_params())
+
+print("\nAmong ARMA(1,0) model ARMA(3,1), ARMA(1.0) has lower Q valure but ARMA(3,1) is better at forecasting.")
+
+#%%
+# ARIMA
+# ARIMA(1,1,0)
+na = 1
+d = 1
+nb = 0
+arima110 = sm.tsa.ARIMA(endog=Y_train, order=(na,d,nb)).fit()
+
+# coefficients
+for i in range(1,na+1):
+  print(f"The AR coefficient a{i} is: {arima110.params[i]:.2f}")
+for i in range(1,nb+1):
+  print(f"The MA coefficient b{i} is {arima110.params[i+na]:.2f}")
+
+print(arima110.summary())
+
+# confidance interval
+print('Confidance Interval: ')
+print(arima110.conf_int())
+
+print('As the interval does not contain zero in it, it is statistically important.')
+
+# Prediction
+arima110_pred = arima110.fittedvalues
+arima110_predict = inverse_diff(Y_train.values,np.array(arima110_pred),1)
+arima110_residuals = Y_train[1:] - arima110_predict
+
+# Forecast
+arima110_for = arima110.predict(start=len(Y_train), end = len(df)-1)
+arima110_for = inverse_diff(Y_test.values,np.array(arima110_for),1)
+arima110_ferr = pd.DataFrame(Y_test.values[:-1] - arima110_for).set_index(Y_test.index[:-1])
+arima110_ferr=pd.Series(np.array(arima110_ferr[0]),index = pd.date_range(Y_test.index[0],periods= len(Y_test)-1))
+
+# ACF of Residuals
+acf(arima110_residuals, 50, plot=True, title= "ACF of ARIMA(1,1,0) Residuals")
+acf(arima110_ferr, 50, plot=True, title= "ACF of ARIMA(1,1,0) Forecast Errors")
+
+# # MSE
+arima110_p_mse = mean_squared_error(Y_train[:-1], arima110_predict)
+print(f"MSE of Residuals: {arima110_p_mse:.2f}")
+arima110_f_mse = mean_squared_error(Y_test[:-1], arima110_for)
+print(f"MSE of Forecast Error: {arima110_f_mse:.2f}")
+# Q-Value
+arima110_q = q_value(arima110_residuals, 50, len(Y_train))
+print(f"Q-Value: {arima110_q:.2f}")
+# Covariance Matrix
+print('Covariance Matrix: \n', arima110.cov_params())
+
+#%%
+# ARIMA(3,1,1)
+na = 3
+d = 1
+nb = 1
+arima311 = sm.tsa.ARIMA(endog=Y_train, order=(na,d,nb)).fit()
+
+# coefficients
+for i in range(1,na+1):
+  print(f"The AR coefficient a{i} is: {arima311.params[i]:.2f}")
+for i in range(1,nb+1):
+  print(f"The MA coefficient b{i} is {arima311.params[i+na]:.2f}")
+
+print(arima311.summary())
+
+# confidance interval
+print('Confidance Interval: ')
+print(arima311.conf_int())
+
+print("\nHere interval of AR coefficient a2 contains zero, it is statistically not important in this model.")
+
+# Prediction
+arima311_pred = arima311.fittedvalues
+arima311_predict = inverse_diff(Y_train.values,np.array(arima311_pred),1)
+arima311_residuals = Y_train[1:] - arima311_predict
+
+# Forecast
+arima311_for = arima311.predict(start=len(Y_train), end = len(df)-1)
+arima311_for = inverse_diff(Y_test.values,np.array(arima311_for),1)
+arima311_ferr = pd.DataFrame(Y_test.values[:-1] - arima311_for).set_index(Y_test.index[:-1])
+arima311_ferr=pd.Series(np.array(arima311_ferr[0]),index = pd.date_range(Y_test.index[0],periods= len(Y_test)-1))
+
+# ACF of Residuals
+acf(arima311_residuals, 50, plot=True, title= "ACF of ARIMA(3,1,1) Residuals")
+acf(arima311_ferr, 50, plot=True, title= "ACF of ARIMA(3,1,1) Forecast Errors")
+
+# # MSE
+arima311_p_mse = mean_squared_error(Y_train[:-1], arima311_predict)
+print(f"MSE of Residuals: {arima311_p_mse:.2f}")
+arima311_f_mse = mean_squared_error(Y_test[:-1], arima311_for)
+print(f"MSE of Forecast Error: {arima311_f_mse:.2f}")
+# Q-Value
+arima311_q = q_value(arima311_residuals, 50, len(Y_train))
+print(f"Q-Value: {arima311_q:.2f}")
+# Covariance Matrix
+print('Covariance Matrix: \n', arima311.cov_params())
+
+
+print("\nAmong ARIMA(1,1,0) model ARMA(3,1,1), ARIMA(3,1,1) has lower Q valure but ARMA(1,1,0) is better at forecasting.")
+
+
+# SARIMA
+
 
 
 # %%

@@ -500,7 +500,7 @@ def Cal_GPAC(acf: list, len_j: int, len_k: int):
 
     print("GPAC TABLE: \n",gpac)
     plt.figure(figsize=(8,6))
-    sns.heatmap(gpac, annot=True, fmt=".3f")
+    sns.heatmap(gpac, annot=True, fmt=".3f", vmin=-1,vmax=1)
     plt.xlabel('k')
     plt.ylabel('j')
     plt.title('Generalized Partial Autocorrelation (GPAC) Table')
@@ -628,5 +628,14 @@ def plot_SSE(SSE):
     plt.ylabel('SSE')
     plt.title('Sum square error vs. No. of iterations')
     plt.show()
+
+def inverse_diff(y,y_hat,interval=1):
+    y_orginal = np.zeros(len(y))
+    for i in range(1,len(y_hat)):
+        y_orginal[i] = y_hat[i-interval] + y[i-interval]
+    y_orginal = y_orginal[1:]
+    return y_orginal
+
+
 
 #%%
