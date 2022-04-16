@@ -1115,20 +1115,155 @@ print('Covariance Matrix: \n', arima311.cov_params())
 
 print("\nAmong ARIMA(1,1,0) model ARMA(3,1,1), ARIMA(3,1,1) has lower Q valure but ARMA(1,1,0) is better at forecasting.")
 
-
+#%%
 # SARIMA
+
+sarima= sm.tsa.statespace.SARIMAX(Y_train,order=(3,0,0),seasonal_order=(0,1,0,7),
+                                    enforce_stationarity=False,
+                                    enforce_invertibility=False)
+sarima_results=sarima.fit()
+print(sarima_results.summary())
+
+# Prediction
+sarima_pred_ = sarima_results.get_prediction(start=0, end=len(Y_train), dynamic=False)
+sarima_pred = sarima_pred_.predicted_mean
+
+sarima_residuals = Y_train - sarima_pred.values[1:]
+
+# Forecast
+sarima_fore = sarima_results.predict(start=0, end =len(Y_test))
+sarima_ferr =Y_test - sarima_fore.values[1:]
+
+# ACF
+acf(sarima_residuals,50,plot=True,title="ACF of SARIMA Residuals")
+acf(sarima_ferr, 50, plot=True, title="ACF of SARIMA Forecast Errors")
+
+# # MSE
+sarima_pred_mse = mean_squared_error(Y_train, sarima_pred[1:])
+print(f"MSE of Residuals: {sarima_pred_mse:.2f}")
+sarima_fore_mse = mean_squared_error(Y_test, sarima_fore[1:])
+print(f"MSE of Forecast Error: {sarima_fore_mse:.2f}")
+# Q-Value
+sarima_q = q_value(sarima_residuals, 50, len(Y_train))
+print(f"Q-Value: {sarima_q:.2f}")
+# Covariance Matrix
+print('Covariance Matrix: \n', sarima_results.cov_params())
+
 
 
 
 # %%
 ######## 14. LMA
 
+SSE,cov,teta_hat,var = LMA(Y_train,3,1)
+#%%
+print("Estimated ARMA(3,1) model parameters using the LM Algorithm are:- \n", teta_hat)
+print(f"Standard deviation of parameter estimates: {np.std(teta_hat):.2f}")
+print(conf_int(cov, teta_hat, 3, 1))
+print('The coefficients are statistically important as the interval does not include 0.')
+
 # %%
 ######## 15. Diagnostic Analysis
+# confidance intervals
+print("####  Confidance Intervals:  ####\n")
+print("\nOLS:- \n", final_model.conf_int())
+print("\nARMA(1,0):-\n", arma10.conf_int())
+print("\nARMA(3,1):-\n", arma31.conf_int())
+print("\nARIMA(1,1,0):-\n", arima110.conf_int())
+print("\nARIMA(3,1,1):-\n", arima311.conf_int())
+print("\nSARIMA:-\n", sarima_results.conf_int())
+#%%
+# zero/pole cancellation
+print("####  Zero/Pole cancellations:  ####\n")
+# print("\nOLS:- \n", zero_pole(final_model.params, na))
+print("\nARMA(1,0):-\n", zero_pole(arma10.params, 1))
+print("\nARMA(3,1):-\n", zero_pole(arma31.params, 3))
+print("\nARIMA(1,1,0):-\n", zero_pole(arima110.params, 1))
+print("\nARIMA(3,1,1):-\n", zero_pole(arima311.params, 3))
+print("\nSARIMA:-\n", zero_pole(sarima_results.params[:-1], 3))
+
+print("None of the models have zero pole cancellations")
+#%%
+# chi sq test
+
+def chi_sq(lags,na,nb, q, alpha=0.01):
+  from scipy.stats import chi2
+  DOF= lags - na - nb
+  chi_critical = chi2.ppf(1-alpha,DOF)
+  print(f"\tQ-Value: {q:.2f}\n\tChi Critical Value: {chi_critical:.2f}")
+  if q < chi_critical:
+    print('The residual is white')
+  else:
+      print('The residual is not white')
+  return None
 
 
-# %%
-######## 16. Deep learning Model LSTM 
+# print("\nOLS:- \n")
+print("\nARMA(1,0):-")
+chi_sq(50,1,0,arma10_q)
+print("\nARMA(3,1):-")
+chi_sq(50,3,1,arma31_q)
+print("\nARIMA(1,1,0):-\n")
+chi_sq(50,1,0,arima110_q)
+print("\nARIMA(3,1,1):-\n")
+chi_sq(50,3,0,arima311_q)
+print("\nSARIMA:-\n")
+chi_sq(50,3,0,sarima_q)
+
+#%%
+# variance of residual error
+print("\nVariance of Residual Errors: ")
+print(f"\tOLS: {np.var(res_err):.2f}")
+print(f"\tARMA(1,0): {np.var(arma10_residuals):.2f} ")
+
+print(f"\tARMA(3,1): {np.var(arma31_residuals):.2f} ")
+
+print(f"\tARIMA(1,1,0): {np.var(arima110_residuals):.2f} ")
+
+print(f"\tARIMA(3,1,1): {np.var(arima311_residuals):.2f} ")
+
+print(f"\tSARIMA: {np.var(sarima_residuals):.2f} ")
+
+# variance of forecast error
+print("\nVariance of Forecast Errors: ")
+print(f"\tOLS: {np.var(fcst_err):.2f}")
+print(f"\tARMA(1,0): {np.var(arma10_ferr):.2f} ")
+
+print(f"\tARMA(3,1): {np.var(arma31_ferr):.2f} ")
+
+print(f"\tARIMA(1,1,0): {np.var(arima110_ferr):.2f} ")
+
+print(f"\tARIMA(3,1,1): {np.var(arima311_ferr):.2f} ")
+
+print(f"\tSARIMA: {np.var(sarima_ferr):.2f} ")
+
+# MSE
+# MSE of residuals
+print("\nMSE of Residuals: ")
+print(f"\tOLS: {np.mean(np.square(res_err)):.2f}")
+print(f"\tARMA(1,0): {np.mean(np.square(arma10_residuals)):.2f} ")
+
+print(f"\tARMA(3,1): {np.mean(np.square(arma31_residuals)):.2f} ")
+
+print(f"\tARIMA(1,1,0): {np.mean(np.square(arima110_residuals)):.2f} ")
+
+print(f"\tARIMA(3,1,1): {np.mean(np.square(arima311_residuals)):.2f} ")
+
+print(f"\tSARIMA: {np.mean(np.square(sarima_residuals)):.2f} ")
+
+# MSE of forecasts
+print("\nMSE of Forecasts: ")
+print(f"\tOLS: {np.mean(np.square(fcst_err)):.2f}")
+print(f"\tARMA(1,0): {np.mean(np.square(arma10_ferr)):.2f} ")
+
+print(f"\tARMA(3,1): {np.mean(np.square(arma31_ferr)):.2f} ")
+
+print(f"\tARIMA(1,1,0): {np.nanmean(np.square(arima110_ferr)):.2f} ")
+
+print(f"\tARIMA(3,1,1): {np.mean(np.square(arima311_ferr)):.2f} ")
+
+print(f"\tSARIMA: {np.mean(np.square(sarima_ferr)):.2f} ")
+
 
 # %%
 ######## 17. Final model Selection
