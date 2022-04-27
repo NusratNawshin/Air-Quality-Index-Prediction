@@ -303,17 +303,17 @@ def drift_predict(t: list, yt: list, h):
         h (int): [step]
 
     Returns:
-        [forecast]: [list of predicts]
+        [predicts]: [list of predicts]
     """
-    forecast = []
+    predicts = []
     for i,v in zip(t, yt):
         if i == 0:
-            forecast.append(np.nan)
+            predicts.append(np.nan)
         elif i == 1:
-            forecast.append(np.nan) 
+            predicts.append(np.nan) 
         else:
-            forecast.append(round(yt[i-1]+((h*(yt[i-1]-yt[0]))/(i-1)),2))
-    return forecast
+            predicts.append(round(yt[i-1]+((h*(yt[i-1]-yt[0]))/(i-1)),2))
+    return predicts
 
 def drift_forecast(y_begin, y_end, t, h):
     """
@@ -639,3 +639,4 @@ def inverse_diff(y,y_hat,interval=1):
 
 
 #%%
+# %%
