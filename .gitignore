@@ -1,3 +1,4 @@
 
 .vscode/settings.json
 __pycache__/toolbox.cpython-38.pyc
+*.png

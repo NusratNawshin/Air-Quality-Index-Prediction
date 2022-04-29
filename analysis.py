@@ -1,4 +1,5 @@
 #%%
+from sympy import rotations
 from toolbox import *
 import pandas as pd
 import numpy as np
@@ -12,7 +13,6 @@ import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
 from statsmodels.stats.diagnostic import acorr_ljungbox
-import statsmodels.tsa.arima_model
 from numpy import linalg as LA
 import warnings
 warnings.filterwarnings('ignore')
@@ -33,6 +33,8 @@ print(f"The dataset contains {df.shape[0]} number of rows and \
 {df.shape[1]} columns and doesn't contain any missing values.\
 It has the AQI data from {df.index[0]} to {df.index[-1]}. ")
 
+#%%
+print(df.describe())
 
 # %%
 ########## b. plotting dependent variable vs time.
@@ -63,7 +65,7 @@ dff = df.drop(['O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
 
 plt.figure(figsize=(14,14))
 
-sns.heatmap(dff.corr(), vmin=-1,vmax=1, cmap='vlag', annot=True)
+sns.heatmap(dff.corr(), vmin=-1,vmax=1,cmap='RdBu_r', annot=True)
 
 plt.title('Correlation Matrix of AQI Dataset')
 plt.show()
@@ -78,6 +80,9 @@ X = X.drop(['avgAQI', 'O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
 y = df['avgAQI']
 
 x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2,shuffle=False)
+print("Train set: ", x_train.shape)
+print("Test set: ", x_test.shape)
+
 
 # %%
 ######### 7. Stationarity Check
@@ -95,7 +100,7 @@ print('The ADF p-value below a threshold (1% or 5%) suggests that we reject the 
 # %%
 # KPSS Test
 kpss_test(df['avgAQI'])
-print('The ADF p-value below a threshold (1% or 5%) suggests that we reject the null hypothesis and conclude that the data is non stationary.')
+print('The KPSS p-value below a threshold (1% or 5%) suggests that we reject the null hypothesis and conclude that the data is non stationary.')
 
 # Case 1: Both tests conclude that the series is not stationary - The series is not stationary
 # Case 2: Both tests conclude that the series is stationary - The series is stationary
@@ -171,7 +176,7 @@ print(f"The strength of trend for this dataset is {F_t:.3f}")
 # Strength of seasonality
 F = np.maximum(0, 1 - np.var(np.array(R)) / np.var(np.array(S) + np.array(R)))
 
-print(f"The strength of seasonality for this datset is {F:.3f}")
+print(f"The strength of seasonality for this dataset is {F:.3f}")
 
 # %%
 print(f'Observing the graphs, trend and strength of seasonality values,\
@@ -213,6 +218,7 @@ dfma.dropna(inplace=True)
 dfma[['avgAQI', 'avgAQI_MA']].plot(label='AQI', 
                                   figsize=(16, 8))
 plt.title('3-MA')
+plt.grid()
 plt.show()
 
 # %%
@@ -233,9 +239,10 @@ plt.show()
 
 x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2,shuffle=False)
 
-holtt = ets.ExponentialSmoothing(y_train, trend='add', damped_trend=True).fit()
+holtt = ets.ExponentialSmoothing(y_train,  trend='add', damped_trend=True, seasonal=None).fit()
 
-holtt_predt=holtt.forecast(steps=len(y_train))
+# holtt_predt=holtt.forecast(steps=len(y_train))
+holtt_predt=holtt.fittedvalues
 holtt_df=pd.DataFrame(holtt_predt,columns=['avgAQI']).set_index(y_train.index)
 
 holtt_forcst=holtt.forecast(steps=len(y_test))
@@ -244,13 +251,14 @@ holtf_df=pd.DataFrame(holtt_forcst,columns=['avgAQI']).set_index(y_test.index)
 plt.figure(figsize=(16,8))
 plt.plot(y_train.index,y_train, label='Train', color = 'b')
 plt.plot(y_test.index,y_test, label='Test', color = 'g')
-plt.plot(holtt_df.index,holtt_df['avgAQI'],label='Holts winter prediction', color = 'skyblue', linestyle='dashed')
+# plt.plot(holtt_df.index,holtt_df['avgAQI'],label='Holts winter prediction', color = 'skyblue', linestyle='dashed')
 plt.plot(holtf_df.index,holtf_df['avgAQI'],label='Holts winter forecast', color = 'r')
 plt.xticks(holtt_df.index.values[::1300])
 plt.legend(loc = 'upper right')
 plt.xlabel("Time")
 plt.ylabel("Average AQI")
 plt.title("Holts Winter Method")
+plt.grid()
 plt.show()
 
 # MSE
@@ -278,6 +286,23 @@ acf(fcst_err, 50,plot=True, title='ACF of Forecast Error')
 # res_q = len(y_train)*np.sum(res_q)
 res_q = q_value(res_err, 50, len(y_train))
 print(f"Q-Value of Residual Error: {res_q:.3f}")
+
+#%%
+qstar,pvalue=sm.stats.acorr_ljungbox(res_err,lags=[50])
+
+
+# print(f"Q*-Value of Residual Error: {qstar[0]:.3f}")
+
+# if res_q < qstar:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
+
 
 # %%
 ######## 10. Feature Selection
@@ -311,6 +336,62 @@ print(f'\nThe condition number for x is {LA.cond(Xx):.2f}') # its k -> if small 
 # • The κ > 1000 =⇒ Severe DOC
 
 print("\nAs the condition number is very high there is a severe Degree of Co-linearity.")
+
+#%%
+
+print("I am using PCA for feature elimination.")
+
+from sklearn.decomposition import PCA
+pca=PCA(n_components='mle',svd_solver='full')
+pca.fit(sdv_df)
+aqi_pca=pca.transform(sdv_df)
+
+print("Original Dimension:",sdv_df.shape)
+print("Transformed dimension:", aqi_pca.shape)
+print("Explained variance ratio:\n",pca.explained_variance_ratio_)
+x=np.arange(1,len(np.cumsum(pca.explained_variance_ratio_))+1,1)
+plt.plot(x,np.cumsum(pca.explained_variance_ratio_))
+plt.xticks(x)
+plt.xlabel("Number of Components")
+plt.ylabel("Cumulative Explained Variance")
+plt.title("Cumulative Explained Variance vs Number of Components")
+plt.grid()
+plt.show()
+
+print('PCA already reduced the features from 15 to 14, but\
+ more feature can be removed as with 5 just features we are getting\
+ more than 90% explained variance. ')
+
+# Making new reduced feature space with 5 components
+pcaf=PCA(n_components=5,svd_solver='full')
+pcaf.fit(sdv_df)
+reduced_aqi_pcaf=pcaf.transform(sdv_df)
+
+print("\nOriginal Dimension:",sdv_df.shape)
+print("Transformed Dimension:",reduced_aqi_pcaf.shape)
+print("Explained variance ratio:\n",pcaf.explained_variance_ratio_)
+
+
+x=np.arange(1,len(np.cumsum(pcaf.explained_variance_ratio_))+1,1)
+plt.plot(x,np.cumsum(pcaf.explained_variance_ratio_))
+plt.xticks(x)
+plt.xlabel("Number of Components")
+plt.ylabel("Cumulative Explained Variance")
+plt.title("Cumulative Explained Variance Vs Number of Components")
+plt.suptitle("Reduced Feature Space", fontsize = 22)
+plt.grid()
+plt.show()
+
+
+PlayStore_pcaf_df=pd.DataFrame(reduced_aqi_pcaf).corr()
+column=[]
+for i in range(reduced_aqi_pcaf.shape[1]):
+    column.append(f'Priciple Column{i+1}')
+plt.figure(figsize=(8,6))
+sns.heatmap(PlayStore_pcaf_df,annot=True, xticklabels=column,yticklabels=column)
+plt.title("Correlation Coefficient of Reduced Feature Space")
+plt.show()
+
 
 #%%
 # OLS
@@ -665,7 +746,23 @@ print("Variance of Forecast error: ", var_err_forecast)
 acf(df_avg['e'], 50, plot= True, title="ACF of Average Method Residuals")
 
 # Prediction Q
-print(f"Q-Value: {q_value(df_avg['e'],50,len(df_avg)):.3f}")
+q_avg = q_value(df_avg['e'],50,len(df_avg))
+print(f"Q-Value: {q_avg:.2f}")
+
+qstar_avg,pvalue_avg=sm.stats.acorr_ljungbox(df_avg['e'],lags=[50])
+
+# print(f"Q*-Value of Residual Error: {qstar_avg[0]:.2f}")
+
+# if res_q < qstar_avg:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue_avg > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
+
 
 #%%
 # Naive
@@ -715,7 +812,23 @@ print("Variance of Forecast error: ", var_err_forecast_nv)
 acf(df_niv['e'], 50, plot= True, title="ACF of Naive Method Residuals")
 
 # Prediction Q
-print(f"Q-Value: {q_value(df_niv['e'],50,len(df_niv)):.3f}")
+q_niv = q_value(df_niv['e'],50,len(df_niv))
+print(f"Q-Value: {q_niv:.2f}")
+
+qstar_niv,pvalue_niv=sm.stats.acorr_ljungbox(df_niv['e'][1:],lags=[50])
+
+# print(f"Q*-Value of Residual Error: {qstar_niv[0]:.2f}")
+
+# if q_niv < qstar_niv:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue_niv > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
+
 
 #%%
 # Drift
@@ -765,19 +878,35 @@ print("Variance of Forecast error: ", var_err_forecast_df)
 # ACF
 acf(df_drft['e'], 50, plot= True, title="ACF of Drift Method Residuals")
 
+
 # Prediction Q
-print(f"Q-Value: {q_value(df_drft['e'],50,len(df_drft)):.3f}")
+q_dft = q_value(df_drft['e'],50,len(df_drft))
+print(f"Q-Value: {q_dft:.2f}")
+
+qstar_dft,pvalue_dft=sm.stats.acorr_ljungbox(df_drft['e'][2:],lags=[50])
+
+# print(f"Q*-Value of Residual Error: {qstar_dft[0]:.2f}")
+
+# if q_dft < qstar_dft:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue_dft > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
+
 
 #%%
 # Simple Exponential Smoothing (SES)
-# ses = ets.ExponentialSmoothing(Y_train, trend =None, damped_trend = False, seasonal = None).fit()
-# ses_pred = pd.DataFrame(ses.fittedvalues).set_index(Y_train.index)
-# ses_frcst = pd.DataFrame(ses.forecast(steps=len(Y_test))).set_index(Y_test.index)
 
 ses = ets.ExponentialSmoothing(y_train, trend =None, damped_trend = False, seasonal = None).fit()
 ses_pred = pd.DataFrame(ses.fittedvalues).set_index(y_train.index)
 ses_frcst = pd.DataFrame(ses.forecast(steps=len(y_test))).set_index(y_test.index)
 
+ses_pred_err = y_train - ses_pred[0].values
+ses_frcst_err = y_test - ses_frcst[0].values
 
 plt.figure(figsize=(16,6))
 # plt.plot(Y_train.index,Y_train.values, label='Training Dataset', color='b')
@@ -804,18 +933,34 @@ MSE_ses_frcst = mean_squared_error(y_test, ses_frcst)
 print(f"MSE of forecast: {MSE_ses_frcst:.3f}")
 
 # Variance error of prediction
-var_err_ses_pred = round(np.var(ses_pred[0].values),2)
+var_err_ses_pred = round(np.var(ses_pred_err),2)
 print(f"Variance of prediction error: {var_err_ses_pred:.3f}")
 
 # Variance error of Forecast
-var_err_ses_frcst = round(np.nanvar(ses_frcst[0].values),2)
+var_err_ses_frcst = round(np.nanvar(ses_frcst_err),2)
 print(f"Variance of Forecast error: {var_err_ses_frcst:.3f}")
 
 # ACF
-acf(ses_pred[0].values, 50, plot= True, title="ACF of SES Method Residuals")
+acf(ses_pred_err, 50, plot= True, title="ACF of SES Method Residuals")
+
 
 # Prediction Q
-print(f"Q-Value: {q_value(ses_pred[0].values,50,len(ses_pred)):.3f}")
+q_ses = q_value(ses_pred_err,50,len(ses_pred_err))
+print(f"Q-Value: {q_ses:.2f}")
+
+qstar_ses,pvalue_ses=sm.stats.acorr_ljungbox(ses_pred_err,lags=[50])
+
+# print(f"Q*-Value of Residual Error: {qstar_ses[0]:.2f}")
+
+# if q_ses < qstar_ses:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue_ses > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
 
 
 # %%
@@ -913,6 +1058,26 @@ print(f'\nMSE of Foercast Error: {mean_squared_error(Y_test, forecast):.3f}')
 q_res_ols = q_value(res_err, 50, len(Y_train))
 print(f'\nQ-Value of Residual Error: {q_res_ols:.3f}')
 
+
+# Prediction Q
+# q_dft = q_value(df_drft['e'],50,len(df_drft))
+# print(f"Q-Value: {q_dft:.2f}")
+
+qstar_ols,pvalue_ols=sm.stats.acorr_ljungbox(res_err,lags=[50])
+
+# print(f"Q*-Value of Residual Error: {qstar_ols[0]:.2f}")
+
+# if q_res_ols < qstar_ols:
+#   print("The residual is white as Q < Q*")
+# else:
+#   print("The residual is not white as Q > Q* ")
+
+if pvalue_ols > 0.05:
+  print("The residual is white as p > 0.05")
+else:
+  print("The residual is not white as p < 0.05 ")
+
+
 # Mean Variance of residual
 print(f'Mean of residuals: {np.nanmean(res_err):.2f}')
 print(f'Variance of residuals: {np.var(res_err):.2f}')
@@ -928,7 +1093,7 @@ ACF_PACF_Plot(Y_train, 50)
 re = sm.tsa.stattools.acf(Y_train.values, nlags = 50)
 Cal_GPAC(re[1:],8,8)
 
-print('Observing the patterns ARMA(1,0) and ARMA(3,1) can be selected for further analysis.')
+print('Observing the patterns ARMA(1,0) and ARMA(3,1) can be selected for farther analysis.')
 
 #%%
 # ARMA(1,0)
@@ -938,7 +1103,7 @@ arma10 = sm.tsa.ARMA(Y_train, (na,nb)).fit(trend='nc', disp=0)
 
 # coefficients
 for i in range(na):
-  print(f"The AR coefficient a{i} is: {arma10.params[i]:.2f}")
+  print(f"The AR coefficient a{i} is: {-arma10.params[i]:.2f}")
 for i in range(nb):
   print(f"The MA coefficient b{i} is {arma10.params[i+na]:.2f}")
 
@@ -970,6 +1135,7 @@ print(f"MSE of Forecast Error: {arma10_f_mse:.2f}")
 # Q-Value
 arma10_q = q_value(arma10_residuals, 50, len(Y_train))
 print(f"Q-Value: {arma10_q:.2f}")
+
 # Covariance Matrix
 print('Covariance Matrix: \n', arma10.cov_params())
 
@@ -981,7 +1147,7 @@ arma31 = sm.tsa.ARMA(Y_train, (na,nb)).fit(trend='nc', disp=0)
 
 # coefficients
 for i in range(na):
-  print(f"The AR coefficient a{i} is: {arma31.params[i]:.2f}")
+  print(f"The AR coefficient a{i} is: {-arma31.params[i]:.2f}")
 for i in range(nb):
   print(f"The MA coefficient b{i} is {arma31.params[i+na]:.2f}")
 
@@ -1028,7 +1194,7 @@ arima110 = sm.tsa.ARIMA(endog=Y_train, order=(na,d,nb)).fit()
 
 # coefficients
 for i in range(1,na+1):
-  print(f"The AR coefficient a{i} is: {arima110.params[i]:.2f}")
+  print(f"The AR coefficient a{i} is: {-arima110.params[i]:.2f}")
 for i in range(1,nb+1):
   print(f"The MA coefficient b{i} is {arima110.params[i+na]:.2f}")
 
@@ -1075,7 +1241,7 @@ arima311 = sm.tsa.ARIMA(endog=Y_train, order=(na,d,nb)).fit()
 
 # coefficients
 for i in range(1,na+1):
-  print(f"The AR coefficient a{i} is: {arima311.params[i]:.2f}")
+  print(f"The AR coefficient a{i} is: {-arima311.params[i]:.2f}")
 for i in range(1,nb+1):
   print(f"The MA coefficient b{i} is {arima311.params[i+na]:.2f}")
 
@@ -1119,7 +1285,7 @@ print("\nAmong ARIMA(1,1,0) model ARMA(3,1,1), ARIMA(3,1,1) has lower Q valure b
 #%%
 # SARIMA
 
-sarima= sm.tsa.statespace.SARIMAX(Y_train,order=(3,0,0),seasonal_order=(0,1,0,7),
+sarima= sm.tsa.statespace.SARIMAX(Y_train,order=(3,0,1),seasonal_order=(0,2,0,7),
                                     enforce_stationarity=False,
                                     enforce_invertibility=False)
 sarima_results=sarima.fit()
@@ -1156,12 +1322,14 @@ print('Covariance Matrix: \n', sarima_results.cov_params())
 # %%
 ######## 14. LMA
 
+# AR(3) MA(1) 
 SSE,cov,teta_hat,var = LMA(Y_train,3,1)
-#%%
+
 print("Estimated ARMA(3,1) model parameters using the LM Algorithm are:- \n", teta_hat)
-print(f"Standard deviation of parameter estimates: {np.std(teta_hat):.2f}")
-print(conf_int(cov, teta_hat, 3, 1))
-print('The coefficients are statistically important as the interval does not include 0.')
+print(f"\nStandard deviation of parameter estimates: {np.std(teta_hat):.2f}")
+conf_int(cov, teta_hat, 3, 1)
+print('\nThe coefficients are statistically important as the interval does not include 0.')
+
 
 # %%
 ######## 15. Diagnostic Analysis
@@ -1204,7 +1372,6 @@ def chi_sq(lags,na,nb, q, alpha=0.01):
   return None
 
 
-# print("\nOLS:- \n")
 print("\nARMA(1,0):-")
 chi_sq(50,1,0,arma10_q)
 print("\nARMA(3,1):-")
@@ -1215,6 +1382,16 @@ print("\nARIMA(3,1,1):-\n")
 chi_sq(50,3,0,arima311_q)
 print("\nSARIMA:-\n")
 chi_sq(50,3,0,sarima_q)
+
+#%%
+# Q-Values
+print("Q-Values of Residual Error:")
+print(f'\tOLS: {q_res_ols:.3f}')
+print(f'\tARMA(1,0): {arma10_q:.3f}')
+print(f'\tARMA(3,1): {arma31_q:.3f}')
+print(f'\tARIMA(1,1,0): {arima110_q:.3f}')
+print(f'\tARIMA(3,1,1): {arima311_q:.3f}')
+print(f'\tSARIMA(3,0,1) x (0,2,0,7) : {sarima_q:.3f}')
 
 #%%
 # variance of residual error
@@ -1274,11 +1451,78 @@ print(f"\tSARIMA: {np.mean(np.square(sarima_ferr)):.2f} ")
 # %%
 ######## 17. Final model Selection
 
+print("The final model is ARIMA(3,1,1)")
+
 # %%
 ######## 18. Forecast Function
 
+y_train_diff = y_train.diff(1).dropna()
+y_hat = []
+for i in range(1,len(y_train_diff)):
+    if i==1:
+      y_hat.append((0.69*y_train_diff[i-1]) -(0.97 *y_train_diff[i-1]))
+    elif i == 2:
+      y_hat.append((0.69*y_train_diff[i-1]) - (0.09 * y_train_diff[i-2]) - (0.97*(y_train_diff[i-1] - y_hat[0])))
+    else:
+      y_hat.append((0.69*y_train_diff[i-1]) - (0.09*y_train_diff[i-2]) -(0.01*y_train_diff[i-3]) - (0.97*(y_train_diff[i-1] - y_hat[-1])) )
+
+y_hat_inv_diff = inverse_diff(y_train.values,np.array(y_hat),1)
+
+#%%
+plt.plot(y_train,label='True Data (Train set)')
+plt.plot(y_hat_inv_diff,label='Fitted Data (1-step prediction)')
+plt.title('True data vs. One step prediction data')
+plt.xticks(ticks=range(0,len(y_train_diff))[::697], labels = y_train_diff.index[::697], rotation = 90)
+plt.suptitle("ARIMA(3,1,1): y(t) – 0.69 y(t-1) + 0.09 y(t-2) + 0.01 y(t-3) = e(t) – 0.97 e(t-1)", fontsize=22)
+plt.legend(loc='upper right', bbox_to_anchor=(1.01,1))
+plt.xlabel('Time')
+plt.ylabel('Average AQI')
+plt.show()
+
+#%%
+# plt.plot(y_train,label='True Data')
+# plt.plot(arima311_predict,label='Fitted Data')
+# plt.title('True data vs. One step prediction data')
+# plt.xticks(ticks=range(0,len(y_train))[::697], labels = y_train.index[::697], rotation = 90)
+# plt.suptitle("ARIMA(3,1,1): y(t) – 0.69 y(t-1) + 0.09 y(t-2) + 0.01 y(t-3) = e(t) – 0.97 e(t-1)", fontsize=22)
+# plt.legend(loc='upper right', bbox_to_anchor=(1.01,1))
+# plt.xlabel('Time')
+# plt.ylabel('Average AQI')
+# plt.show()
+# arima311_predict
+
+
 # %%
 ######## 19. h-step Prediction
+def h_step(h,y_train, y_test, y):
+  
+  y_hat = []
+  for i in range(len(y_train),len(y)):
+    if i==len(y_train):
+      
+      y_hat.append((0.69*y[i-h]) -(0.97 *y[i-h]))
+    elif i == (len(y_train)+1):
+      
+      y_hat.append((0.69*y[i-h]) - (0.09 * y[i-h-1]) - (0.97*(y[i-h] - y_hat[0])))
+    else:
+      
+      y_hat.append((0.69*y[i-h]) - (0.09*y[i-h-1]) -(0.01*y[i-h-2]) - (0.97*(y[i-h] - y_hat[-1])) )
+  return y_hat
+
+h=7
+arima311_hstep = h_step(h,y_train, y_test,df['avgAQI'].diff(1).dropna())
+
+arima311_hstep_inv_diff = inverse_diff(y_test.values,np.array(arima311_hstep),1)
+
+plt.plot(y_test,label='True Data (Test set)')
+plt.plot(arima311_hstep_inv_diff,label='Fitted Data (h-step prediction)')
+plt.title(f'True data vs. {h}-step prediction data')
+plt.xticks(ticks=range(0,len(y_test))[::174], labels = y_test.index[::174], rotation = 90)
+plt.suptitle("ARIMA(3,1,1): y(t) – 0.69 y(t-1) + 0.09 y(t-2) + 0.01 y(t-3) = e(t) – 0.97 e(t-1)", fontsize=22)
+plt.legend(loc='upper right', bbox_to_anchor=(1.01,1))
+plt.xlabel('Time')
+plt.ylabel('Average AQI')
+plt.show()
 
 # %%
 ######## 20. Summary  and Conclusion

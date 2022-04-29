@@ -10,6 +10,10 @@ df.reset_index(inplace=True)
 df.drop(columns=['index'], inplace=True)
 
 #%%
+
+print(df.shape)
+
+#%%
 # making date column by merging Year, month and day
 df['Date'] = df[['Year', 'Month','Day']].apply(lambda x: '{}-{}-{}'.format(x[0], x[1], x[2]), axis=1)
 
@@ -18,7 +22,7 @@ df['Date'] = df[['Year', 'Month','Day']].apply(lambda x: '{}-{}-{}'.format(x[0],
 df['avgAQI'] = df[['O3 AQI', 'CO AQI', 'SO2 AQI', 'NO2 AQI']].mean(axis=1)
 
 #%%
-# keeping only queens county for further analysis
+# keeping only Los Angeles county for further analysis
 df2 = df[df['County'] == 'Los Angeles']
 df2.reset_index(inplace=True)
 df2.drop(columns=['index'], inplace=True)

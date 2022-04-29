@@ -248,6 +248,14 @@ def rolling_variance(y:list):
     return var
 
 def q_value(y: list,lags: int, t:int):
+    """ to calculate q value from a given list of residuals
+    Args:
+        y (list): list of residuals to calculate acf
+        lags (list): number of lags
+        t (int): length of trainset
+    Returns:
+        calculated q value
+    """
     r=acf(y,lags, plot= False)
     rk=np.square(r[lags+2:])
     return t*(np.sum(rk))
