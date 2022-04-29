@@ -12,7 +12,6 @@ import statsmodels.tsa.holtwinters as ets
 import statsmodels.api as sm
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import mean_squared_error
-from statsmodels.stats.diagnostic import acorr_ljungbox
 from numpy import linalg as LA
 import warnings
 warnings.filterwarnings('ignore')
@@ -102,14 +101,6 @@ print('The ADF p-value below a threshold (1% or 5%) suggests that we reject the 
 kpss_test(df['avgAQI'])
 print('The KPSS p-value below a threshold (1% or 5%) suggests that we reject the null hypothesis and conclude that the data is non stationary.')
 
-# Case 1: Both tests conclude that the series is not stationary - The series is not stationary
-# Case 2: Both tests conclude that the series is stationary - The series is stationary
-# Case 3: KPSS indicates stationarity and ADF indicates non-stationarity - The series is trend 
-#   stationary. Trend needs to be removed to make series strict stationary. The detrended series is 
-#   checked for stationarity.
-# Case 4: KPSS indicates non-stationarity and ADF indicates stationarity - The series is difference 
-#   stationary. Differencing is to be used to make series stationary. The differenced series is checked 
-#   for stationarity.
 
 # %%
 # ACF
@@ -221,21 +212,10 @@ plt.title('3-MA')
 plt.grid()
 plt.show()
 
-# %%
-
-# ma3 = moving_avg(df['avgAQI'])
-# plt.plot(df.index,df.avgAQI,label="Original")
-# plt.plot(ma3['t'], ma3['3MA'])
-# plt.xticks(df.index[::891])
-# plt.show()
 
 # %%
 ######## 9. Holt-Winters method:
-# df2_nonnull = df2.copy()
-# df2_nonnull.dropna(how='any', inplace =True)
-# X = df2_nonnull.copy()
-# X = X.drop(['avgAQI', 'O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1)
-# y = df2_nonnull['avgAQI']
+
 
 x_train,x_test,y_train,y_test=train_test_split(X,y,test_size=0.2,shuffle=False)
 
@@ -306,11 +286,6 @@ else:
 
 # %%
 ######## 10. Feature Selection
-# svd_df = df.select_dtypes(include='number')
-# svd_df.drop(['O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1, inplace=True)
-# sdv_df = svd_df.drop('avgAQI', axis=1)
-# X = sm.add_constant(sdv_df)
-# Y = df['avgAQI']
 
 svd_df = df.select_dtypes(include='number')
 svd_df.drop(['O3 AQI','CO AQI','SO2 AQI','NO2 AQI'], axis=1, inplace=True)
@@ -386,7 +361,7 @@ plt.show()
 PlayStore_pcaf_df=pd.DataFrame(reduced_aqi_pcaf).corr()
 column=[]
 for i in range(reduced_aqi_pcaf.shape[1]):
-    column.append(f'Priciple Column{i+1}')
+    column.append(f'Pricipal Component {i+1}')
 plt.figure(figsize=(8,6))
 sns.heatmap(PlayStore_pcaf_df,annot=True, xticklabels=column,yticklabels=column)
 plt.title("Correlation Coefficient of Reduced Feature Space")
@@ -624,78 +599,6 @@ X_train.drop(['NO2 1st Max Value'], axis=1, inplace=True)
 X_test = X_test[['const','O3 1st Max Value','CO 1st Max Value']]
 #%%
 final_model = sm.OLS(Y_train,X_train).fit()
-#%%
-# Predictions
-# pred=final_model.predict(X_train)
-# pred = final_model.fittedvalues
-
-# #Residual error
-# res_err=y_train-pred
-
-#Forecasts
-# forecast=final_model.predict(X_test)
-
-# #Forecast error
-# fcst_err=y_test-forecast
-# #%%
-# # Prediction Plot
-# plt.figure(figsize=(16,6))
-# Y_train.plot(label='Train set')
-# plt.plot(pred.index,pred, label='Predicted')
-# plt.title('AvgAQI Prediction using OLS model')
-# plt.ylabel('AQI')
-# plt.xlabel('Time')
-# plt.grid()
-# plt.legend(loc='upper right')
-# plt.show()
-# # Forecast Plot
-# plt.figure(figsize=(16,6))
-# Y_test.plot(label='Test set')
-# plt.plot(forecast.index,forecast, label='Forecast')
-# plt.title('AvgAQI Forecast using OLS model')
-# plt.ylabel('AQI')
-# plt.xlabel('Time')
-# plt.grid()
-# plt.legend(loc='upper right')
-# plt.show()
-# # together
-# plt.figure(figsize=(16,6))
-# Y_train.plot(label='Train set', color = 'b')
-# plt.plot(pred.index,pred, label='Predicted', color = 'skyblue')
-# plt.plot(Y_test, label='Test', color = 'red')
-# plt.plot(forecast.index,forecast, label='Forecast', color = 'seagreen')
-# plt.xticks(ticks=range(0,len(df))[::981], labels = df.index[::981])
-# plt.title('Average AQI Predictions using OLS model')
-# plt.ylabel('AQI')
-# plt.xlabel('Time')
-# plt.grid()
-# plt.legend(loc='upper right')
-# plt.show()
-# #%%
-# # ACF of ERRORS
-# acf(res_err, 50, plot = True, title='ACF of Residual Error')
-# acf(fcst_err, 50, plot = True, title='ACF of Forecast Error')
-
-# # Model Performance
-# # MSE
-# print(f'\nMSE of Residual Error: {mean_squared_error(Y_train, pred):.3f}')
-# print(f'\nMSE of Foercast Error: {mean_squared_error(Y_test, forecast):.3f}')
-# # Q
-
-# q_res_ols = q_value(res_err, 50, len(Y_train))
-# print(f'\nQ-Value of Residual Error: {q_res_ols:.3f}')
-
-# # T test
-# print(f"\nT Test p-values: \n{final_model.pvalues}")
-# print("As the p-values of the T test is less than the significant level\
-#  alpha = 0.05, we reject the null hypothesis and conclude that there is a\
-#  statistically significant relationship between the predictor variable and the response variable.")
-
-# # F test
-# print(f"\nF Test p-value: {final_model.f_pvalue}")
-# print("As the p-value of the F test is less than the significant level\
-#  alpha = 0.05, we can reject the null-hypothesis and conclude that final\
-#  model provides a better fit than the intercept-only model.")
 
 # %%
 ######## 11. Base model
@@ -1091,7 +994,7 @@ print(f'Variance of residuals: {np.var(res_err):.2f}')
 # Cal_GPAC2(re[50:],7,7)
 ACF_PACF_Plot(Y_train, 50)
 re = sm.tsa.stattools.acf(Y_train.values, nlags = 50)
-Cal_GPAC(re[1:],8,8)
+Cal_GPAC(re[:],8,8)
 
 print('Observing the patterns ARMA(1,0) and ARMA(3,1) can be selected for farther analysis.')
 
@@ -1316,9 +1219,6 @@ print(f"Q-Value: {sarima_q:.2f}")
 # Covariance Matrix
 print('Covariance Matrix: \n', sarima_results.cov_params())
 
-
-
-
 # %%
 ######## 14. LMA
 
@@ -1330,6 +1230,9 @@ print(f"\nStandard deviation of parameter estimates: {np.std(teta_hat):.2f}")
 conf_int(cov, teta_hat, 3, 1)
 print('\nThe coefficients are statistically important as the interval does not include 0.')
 
+#%%
+# coefficents from ARMA(3,1)
+print(f"{-arma31.params[:3].values} {arma31.params[-1]}")
 
 # %%
 ######## 15. Diagnostic Analysis
@@ -1447,6 +1350,21 @@ print(f"\tARIMA(3,1,1): {np.mean(np.square(arima311_ferr)):.2f} ")
 
 print(f"\tSARIMA: {np.mean(np.square(sarima_ferr)):.2f} ")
 
+#%%
+
+# ratio of test set by forecast
+print("\nRatio of test set variance by forecast variance: ")
+print(f"\tOLS: {np.var(Y_test)/np.var(forecast):.2f}")
+print(f"\tARMA(1,0): {np.var(Y_test)/np.var(arma10_for):.2f} ")
+
+print(f"\tARMA(3,1): {np.var(Y_test)/np.var(arma31_for):.2f} ")
+
+print(f"\tARIMA(1,1,0): {np.var(Y_test)/np.var(arima110_for):.2f} ")
+
+print(f"\tARIMA(3,1,1): {np.var(Y_test)/np.var(arima311_for):.2f} ")
+
+print(f"\tSARIMA: {np.var(Y_test)/np.var(sarima_fore):.2f} ")
+
 
 # %%
 ######## 17. Final model Selection
@@ -1479,18 +1397,6 @@ plt.xlabel('Time')
 plt.ylabel('Average AQI')
 plt.show()
 
-#%%
-# plt.plot(y_train,label='True Data')
-# plt.plot(arima311_predict,label='Fitted Data')
-# plt.title('True data vs. One step prediction data')
-# plt.xticks(ticks=range(0,len(y_train))[::697], labels = y_train.index[::697], rotation = 90)
-# plt.suptitle("ARIMA(3,1,1): y(t) – 0.69 y(t-1) + 0.09 y(t-2) + 0.01 y(t-3) = e(t) – 0.97 e(t-1)", fontsize=22)
-# plt.legend(loc='upper right', bbox_to_anchor=(1.01,1))
-# plt.xlabel('Time')
-# plt.ylabel('Average AQI')
-# plt.show()
-# arima311_predict
-
 
 # %%
 ######## 19. h-step Prediction
@@ -1509,7 +1415,7 @@ def h_step(h,y_train, y_test, y):
       y_hat.append((0.69*y[i-h]) - (0.09*y[i-h-1]) -(0.01*y[i-h-2]) - (0.97*(y[i-h] - y_hat[-1])) )
   return y_hat
 
-h=7
+h=30
 arima311_hstep = h_step(h,y_train, y_test,df['avgAQI'].diff(1).dropna())
 
 arima311_hstep_inv_diff = inverse_diff(y_test.values,np.array(arima311_hstep),1)
@@ -1524,13 +1430,21 @@ plt.xlabel('Time')
 plt.ylabel('Average AQI')
 plt.show()
 
+#%%
+# variance of test set vs vaarience of predicted set
+print(f"Variance of test set: {np.var(y_test):.2f}")
+print(f"Variance of predicted set: {np.var(arima311_hstep_inv_diff):.2f}")
+print(f"Ratio: {np.var(y_test)/np.var(arima311_hstep_inv_diff):.2f}")
+
 # %%
 ######## 20. Summary  and Conclusion
 
-
-
-
-
-
+# Among the ARMA and ARIMA models ARIMA model with AR (3), MA (1) with differencing order 1,
+#  performed better than the other by considering the lowest q-value of residuals, MSE, ratio
+#  of variance of test set vs forecasted set. From this model I farther generated the model
+#  equation and built 1-step and multi-step prediction functions and the model is exceptionally
+#  good at predict next week as well as next month’s average AQI. Overall, the models did not
+#  have white q-value of residuals possibly because of the nature of the dataset. More advanced
+#  machine learning technique of forecasting like LSTM, XGboost etc. can possibly achieve that.
 
 # %%

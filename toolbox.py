@@ -14,7 +14,6 @@ import statsmodels.api as sm
 import warnings
 warnings.filterwarnings('ignore')
 
-
 # %%
 def Cal_rolling_mean_var(column):
     """
@@ -644,7 +643,4 @@ def inverse_diff(y,y_hat,interval=1):
     y_orginal = y_orginal[1:]
     return y_orginal
 
-
-
 #%%
-# %%
