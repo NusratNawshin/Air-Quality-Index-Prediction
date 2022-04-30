@@ -58,8 +58,11 @@ pip install pandas numpy matplotlib seaborn statsmodels sklearn scipy math**
 
 #### dataset:
 The datasets has to be stored inside data folder.
+
 **pollution_2000_2021.csv** : US all state air pollution data
+
 **AQI_CA_LA.csv** : Only California state Loss Angeles County air pollution data
+
 
 #### files:
 **data_preparation.py** - Reads the original dataset 'pollution_2000_2021.csv' and generates final dataset for analysis 'AQI_CA_LA.csv'
