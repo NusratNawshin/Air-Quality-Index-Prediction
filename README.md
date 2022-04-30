@@ -65,8 +65,12 @@ The datasets has to be stored inside data folder.
 
 
 #### files:
+
 **data_preparation.py** - Reads the original dataset 'pollution_2000_2021.csv' and generates final dataset for analysis 'AQI_CA_LA.csv'
+
 **toolbox.py** - Contains all the helper functions for the analysis
+
 **analysis.py** - Reads the 'AQI_CA_LA.csv' and contains all the time series analysis
+
 **NN_TSA_FTP_Report.pdf** - Final project report pdf
 
