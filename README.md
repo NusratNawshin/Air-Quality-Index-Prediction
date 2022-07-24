@@ -52,7 +52,7 @@ In order to run the project these packages need to be pre-installed into the pyt
 - scipy
 - math
 
-**The command to install all packages together is:
+**The command to install all packages together is: **
 
 pip install pandas numpy matplotlib seaborn statsmodels sklearn scipy math 
 
