@@ -54,7 +54,7 @@ In order to run the project these packages need to be pre-installed into the pyt
 
 **The command to install all packages together is:
 
-pip install pandas numpy matplotlib seaborn statsmodels sklearn scipy math**
+pip install pandas numpy matplotlib seaborn statsmodels sklearn scipy math 
 
 #### dataset:
 The datasets has to be stored inside data folder.
